@@ -1,0 +1,39 @@
+name: Build and Push Docker Image
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build-and-push:
+    # Use 'self-hosted' if pushing to localhost/internal registry, otherwise 'ubuntu-latest'
+    runs-on: ubuntu-latest 
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Build Docker Image
+      run: docker build -f StudentApi/Dockerfile -t manifest-app .
+
+    - name: Log into Harbor Registry
+      # Requires Secrets in GitHub Repository settings
+      # REGISTRY_URL: localhost:30002 (Note: localhost won't work on ubuntu-latest)
+      # REGISTRY_USERNAME
+      # REGISTRY_PASSWORD
+      run: |
+        echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login ${{ secrets.REGISTRY_URL }} -u ${{ secrets.REGISTRY_USERNAME }} --password-stdin
+
+    - name: Tag and Push Image
+      run: |
+        # Generate a dynamic tag (e.g., v1-run123)
+        IMAGE_ID=${{ secrets.REGISTRY_URL }}/studenten/manifest-app
+        VERSION=v1-${{ github.run_number }}
+        
+        echo "Tagging image as $VERSION"
+        docker tag manifest-app $IMAGE_ID:$VERSION
+        docker tag manifest-app $IMAGE_ID:latest
+        
+        echo "Pushing image..."
+        docker push $IMAGE_ID:$VERSION
+        docker push $IMAGE_ID:latest
