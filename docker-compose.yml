@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: StudentApi/Dockerfile
+    ports:
+      - "5000:8080"
+    depends_on:
+      - db
+    secrets:
+      - db_password
+      - db_user
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: studentdb
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+      POSTGRES_USER_FILE: /run/secrets/db_user
+    secrets:
+      - db_password
+      - db_user
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+secrets:
+  db_password:
+    file: ./secrets/db_password.txt
+  db_user:
+    file: ./secrets/db_user.txt
+
+volumes:
+  postgres_data:
