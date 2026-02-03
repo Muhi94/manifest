@@ -32,9 +32,11 @@ spec:
         runAsNonRoot: true
         runAsUser: 1000
         fsGroup: 1000
+      imagePullSecrets:
+        - name: harbor-regcred
       containers:
       - name: manifest-app
-        image: localhost:30002/studenten/manifest-app:v1
+        image: localhost:30002/studenten/manifest-app:latest
         imagePullPolicy: Always  # Always pull latest version
         ports:
         - name: http

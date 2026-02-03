@@ -18,6 +18,8 @@ spec:
       recurse: true
       # Nur YAML/YML verarbeiten (verhindert Müll-Files)
       include: '{*.yaml,*.yml}'
+      # Verhindert, dass Template-Dateien angewendet werden
+      exclude: '{*.template.yaml,*.template.yml,*.tmpl,*.tpl}'
   
   destination:
     server: https://kubernetes.default.svc
