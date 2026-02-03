@@ -38,15 +38,9 @@ spec:
         volumeMounts:
         - name: postgres-data
           mountPath: /var/lib/postgresql/data
-  
-  ## VOLUME CLAIM TEMPLATES - Automatic PVC Creation
-  # ═══════════════════════════════════════════════════════════════
-  volumeClaimTemplates:
-  - metadata:
-      name: postgres-data
-    spec:
-      accessModes: ["ReadWriteOnce"]
-      storageClassName: hostpath # Correct for Docker Desktop
-      resources:
-        requests:
-          storage: 10Gi
+      
+      # Verwende die persistent PVC (wird NICHT gelöscht)
+      volumes:
+      - name: postgres-data
+        persistentVolumeClaim:
+          claimName: postgres-data-postgres-0

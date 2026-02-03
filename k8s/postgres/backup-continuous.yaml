@@ -40,21 +40,8 @@ data:
     done
 
 ---
-# PersistentVolumeClaim für Backups
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: postgres-backup-pvc
-  namespace: development
-  labels:
-    app: postgres-backup
-spec:
-  accessModes:
-  - ReadWriteOnce
-  storageClassName: hostpath
-  resources:
-    requests:
-      storage: 5Gi
+# PVC wird in persistent-volumes.yaml definiert (mit Prune=false)
+# Damit Backups auch nach Application-Löschung erhalten bleiben
 
 ---
 # Deployment für den Backup-Daemon

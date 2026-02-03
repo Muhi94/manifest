@@ -1,0 +1,45 @@
+---
+# Persistent PVCs - Diese werden NICHT gelöscht, auch wenn die Application weg ist!
+# ArgoCD wird diese PVCs nicht löschen (Prune=false)
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-data-postgres-0
+  namespace: development
+  labels:
+    app: postgres
+    component: database
+  annotations:
+    # ArgoCD soll dieses PVC NICHT löschen
+    argocd.argoproj.io/sync-options: Prune=false
+    description: "Postgres main data storage - DO NOT DELETE"
+spec:
+  accessModes:
+  - ReadWriteOnce
+  storageClassName: hostpath
+  resources:
+    requests:
+      storage: 10Gi
+
+---
+# Backup Storage PVC - Persistent
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-backup-pvc
+  namespace: development
+  labels:
+    app: postgres-backup
+    component: backup
+  annotations:
+    # ArgoCD soll dieses PVC NICHT löschen
+    argocd.argoproj.io/sync-options: Prune=false
+    description: "Postgres backup storage - DO NOT DELETE"
+spec:
+  accessModes:
+  - ReadWriteOnce
+  storageClassName: hostpath
+  resources:
+    requests:
+      storage: 5Gi
