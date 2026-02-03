@@ -20,15 +20,14 @@ if (-not $backupDaemonPod) {
 # Liste verfügbare Backups
 if ($ListBackups) {
     Write-Host "`nAvailable backups:" -ForegroundColor Cyan
-    kubectl exec -n $namespace $backupDaemonPod -- ls -lh /backups/continuous-*.sql 2>$null | 
-        Select-Object -Skip 1 | 
-        ForEach-Object {
-            if ($_ -match '(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(.*?)continuous-(.+)\.sql') {
-                $size = $matches[5].Trim()
-                $timestamp = $matches[6]
-                Write-Host "  • continuous-$timestamp.sql [$size]" -ForegroundColor Green
-            }
+    $output = kubectl exec -n $namespace $backupDaemonPod -- sh -c 'ls -lh /backups/*.sql 2>/dev/null || echo "No backups found"'
+    if ($output -match "No backups found") {
+        Write-Host "  (keine Backups gefunden)" -ForegroundColor Yellow
+    } else {
+        $output | Select-Object -Skip 1 | ForEach-Object {
+            Write-Host "  $_" -ForegroundColor Green
         }
+    }
     Write-Host ""
     exit 0
 }
@@ -36,7 +35,7 @@ if ($ListBackups) {
 # Backup-Datei auswählen
 if (-not $BackupFile) {
     Write-Host "Available backups:" -ForegroundColor Cyan
-    $backups = kubectl exec -n $namespace $backupDaemonPod -- ls -t /backups/continuous-*.sql 2>$null
+    $backups = kubectl exec -n $namespace $backupDaemonPod -- sh -c 'ls -t /backups/continuous-*.sql 2>/dev/null'
     $backups | ForEach-Object { Write-Host "  $_" }
     
     Write-Host "`nUsage: .\restore-backup.ps1 -BackupFile <filename>" -ForegroundColor Yellow
@@ -45,7 +44,7 @@ if (-not $BackupFile) {
 }
 
 # Prüfe ob Backup existiert
-$exists = kubectl exec -n $namespace $backupDaemonPod -- test -f "/backups/$BackupFile" 2>&1
+$exists = kubectl exec -n $namespace $backupDaemonPod -- sh -c "test -f '/backups/$BackupFile'" 2>&1
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Backup file not found: $BackupFile"
     exit 1
@@ -75,8 +74,8 @@ $pass = kubectl get secret db-credentials -n $namespace -o jsonpath="{.data.pass
 kubectl exec -n $namespace $backupDaemonPod -- sh -c "PGPASSWORD='$pass' psql -h postgres-service -U $user -d studentdb < /backups/$BackupFile"
 
 if ($LASTEXITCODE -eq 0) {
-    Write-Host "`n✓ Restore completed successfully!" -ForegroundColor Green
+    Write-Host "`n[SUCCESS] Restore completed successfully!" -ForegroundColor Green
 } else {
-    Write-Host "`n✗ Restore failed!" -ForegroundColor Red
+    Write-Host "`n[FAILED] Restore failed!" -ForegroundColor Red
     exit 1
 }
