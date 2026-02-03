@@ -3,8 +3,17 @@ kind: Deployment
 metadata:
   name: manifest-app
   namespace: development
+  labels:
+    app: manifest-app
+    version: v1
+    component: api
 spec:
   replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0  # Zero-downtime deployments
   selector:
     matchLabels:
       app: manifest-app
@@ -12,12 +21,25 @@ spec:
     metadata:
       labels:
         app: manifest-app
+        version: v1
+        component: api
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
       containers:
       - name: manifest-app
         image: localhost:30002/studenten/manifest-app:v1
+        imagePullPolicy: Always  # Always pull latest version
         ports:
-        - containerPort: 8080
+        - name: http
+          containerPort: 8080
+          protocol: TCP
         resources:
           requests:
             cpu: 100m
@@ -25,28 +47,47 @@ spec:
           limits:
             cpu: 500m
             memory: 512Mi
-
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false  # Set to true if app doesn't need write access
+          capabilities:
+            drop:
+            - ALL
+        startupProbe:
+          httpGet:
+            path: /api/student
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 10  # Allow up to 50s for startup
         livenessProbe:
           httpGet:
             path: /api/student
             port: 8080
           initialDelaySeconds: 30
           periodSeconds: 10
-
+          timeoutSeconds: 3
+          failureThreshold: 3
         readinessProbe:
           httpGet:
             path: /api/student
             port: 8080
           initialDelaySeconds: 5
           periodSeconds: 5
-
+          timeoutSeconds: 3
+          failureThreshold: 3
         env:
         - name: DB_HOST
           valueFrom:
             configMapKeyRef:
               name: app-config
               key: database-host
-
+        - name: DB_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: database-name
         volumeMounts:
         - name: secret-volume
           mountPath: /etc/app-secrets
@@ -64,14 +105,21 @@ spec:
 
 ---
 
+---
 apiVersion: v1
 kind: Service
 metadata:
   name: manifest-app-service
   namespace: development
+  labels:
+    app: manifest-app
+    component: api
 spec:
+  type: ClusterIP
   selector:
     app: manifest-app
   ports:
-  - port: 80
+  - name: http
+    port: 80
     targetPort: 8080
+    protocol: TCP
