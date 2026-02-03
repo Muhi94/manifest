@@ -1,0 +1,115 @@
+---
+# ConfigMap mit Backup-Script
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-backup-script
+  namespace: development
+data:
+  backup.sh: |
+    #!/bin/sh
+    set -e
+    
+    echo "Starting continuous backup daemon..."
+    echo "Backup interval: 30 minutes"
+    echo "Retention: Last 10 backups"
+    
+    while true; do
+      TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+      BACKUP_FILE="/backups/continuous-$TIMESTAMP.sql"
+      
+      echo "[$(date)] Creating backup: $BACKUP_FILE"
+      
+      if pg_dump -h postgres-service -U $PGUSER -d studentdb > $BACKUP_FILE; then
+        echo "[$(date)] ✓ Backup successful: $BACKUP_FILE"
+        
+        # Nur die letzten 10 Backups behalten
+        BACKUP_COUNT=$(ls -1 /backups/continuous-*.sql 2>/dev/null | wc -l)
+        if [ $BACKUP_COUNT -gt 10 ]; then
+          echo "[$(date)] Cleaning old backups (keeping last 10)..."
+          ls -t /backups/continuous-*.sql | tail -n +11 | xargs -r rm
+          echo "[$(date)] ✓ Cleanup completed"
+        fi
+      else
+        echo "[$(date)] ✗ Backup failed!"
+      fi
+      
+      # Warten bis zum nächsten Backup (30 Minuten)
+      echo "[$(date)] Sleeping for 30 minutes..."
+      sleep 1800
+    done
+
+---
+# PersistentVolumeClaim für Backups
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-backup-pvc
+  namespace: development
+  labels:
+    app: postgres-backup
+spec:
+  accessModes:
+  - ReadWriteOnce
+  storageClassName: hostpath
+  resources:
+    requests:
+      storage: 5Gi
+
+---
+# Deployment für den Backup-Daemon
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-backup-daemon
+  namespace: development
+  labels:
+    app: postgres-backup
+    component: backup
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-backup
+  template:
+    metadata:
+      labels:
+        app: postgres-backup
+        component: backup
+    spec:
+      containers:
+      - name: backup
+        image: postgres:15-alpine
+        env:
+        - name: PGUSER
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: username
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: password
+        command: ["/bin/sh", "/scripts/backup.sh"]
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+        volumeMounts:
+        - name: scripts
+          mountPath: /scripts
+          readOnly: true
+        - name: backup-storage
+          mountPath: /backups
+      volumes:
+      - name: scripts
+        configMap:
+          name: postgres-backup-script
+          defaultMode: 0755
+      - name: backup-storage
+        persistentVolumeClaim:
+          claimName: postgres-backup-pvc
