@@ -12,7 +12,7 @@ spec:
   
   source:
     repoURL: https://github.com/Muhi94/manifest.git
-    targetRevision: HEAD
+    targetRevision: cursor
     path: k8s
     directory:
       recurse: true
