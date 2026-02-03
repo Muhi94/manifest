@@ -2,21 +2,40 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: manifest-app
-  namespace: argocd 
+  namespace: argocd
+  # Saubere Labels für Filtering/Monitoring
+  labels:
+    environment: development
+    managed-by: argocd
 spec:
   project: default
+  
   source:
-    repoURL: https://github.com/DEIN_USER/manifest.git # BITTE ANPASSEN!
+    repoURL: https://github.com/Muhi94/manifest.git
     targetRevision: HEAD
-    path: k8s # Pfad zu deinen Manifesten im Repo (rekursiv)
+    path: k8s
     directory:
       recurse: true
+      # Nur YAML/YML verarbeiten (verhindert Müll-Files)
+      include: '{*.yaml,*.yml}'
+  
   destination:
     server: https://kubernetes.default.svc
     namespace: development
+  
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
-    - CreateNamespace=true
+      - CreateNamespace=true
+      # Verhindert Race-Conditions bei gleichzeitigen Änderungen
+      - ServerSideApply=true
+    
+    # Retry-Strategie bei temporären Fehlern (z.B. ImagePullBackOff)
+    retry:
+      limit: 3
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m

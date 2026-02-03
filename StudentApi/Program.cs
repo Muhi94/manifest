@@ -11,10 +11,10 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Read secrets from Docker secrets location
+// Read secrets from secure location
 string GetSecret(string secretName)
 {
-    var secretPath = Path.Combine("/run/secrets", secretName);
+    var secretPath = Path.Combine("/etc/app-secrets", secretName);
     if (File.Exists(secretPath))
     {
         return File.ReadAllText(secretPath).Trim();
