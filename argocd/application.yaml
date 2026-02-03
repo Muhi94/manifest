@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: manifest-app
+  namespace: argocd 
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/DEIN_USER/manifest.git # BITTE ANPASSEN!
+    targetRevision: HEAD
+    path: k8s # Pfad zu deinen Manifesten im Repo (rekursiv)
+    directory:
+      recurse: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: development
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true

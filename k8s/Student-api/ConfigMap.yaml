@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: development
+data:
+  database-host: "postgres-service"
+  database-name: "studentdb"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: db-credentials
+  namespace: development
+type: Opaque
+stringData:
+  username: "app_user"
+  password: "SuperSecurePassword123!"

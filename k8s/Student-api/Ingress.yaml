@@ -1,0 +1,32 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: manifest-app-ingress
+  namespace: development
+  annotations:
+    # Nginx-specific configuration
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "false" # Set to false if testing on localhost without SSL
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    # Rate Limiting
+    nginx.ingress.kubernetes.io/limit-rps: "100"
+    # CORS
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+spec:
+  ingressClassName: nginx
+  # TLS Configuration (commented out for localhost, enable if you have secrets)
+  # tls:
+  # - hosts:
+  #   - localhost
+  #   secretName: api-tls-secret
+  rules:
+  - host: localhost # Or api.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: manifest-app-service
+            port:
+              number: 80

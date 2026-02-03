@@ -24,8 +24,9 @@ string GetSecret(string secretName)
 
 var dbPassword = GetSecret("db_password") ?? "postgres"; // Fallback for local dev if not using secrets
 var dbUser = GetSecret("db_user") ?? "postgres";
+var dbHost = Environment.GetEnvironmentVariable("DB_HOST") ?? "db";
 
-var connectionString = $"Host=db;Database=studentdb;Username={dbUser};Password={dbPassword}";
+var connectionString = $"Host={dbHost};Database=studentdb;Username={dbUser};Password={dbPassword}";
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
