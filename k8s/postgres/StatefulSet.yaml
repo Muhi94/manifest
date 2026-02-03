@@ -16,6 +16,7 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: false  # PostgreSQL needs root for data directory
+        runAsUser: 0  # Required to chown the data dir on Docker Desktop hostpath
         fsGroup: 999
       containers:
       - name: postgres

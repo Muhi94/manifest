@@ -6,14 +6,3 @@ metadata:
 data:
   database-host: "postgres-service"
   database-name: "studentdb"
-
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: db-credentials
-  namespace: development
-type: Opaque
-stringData:
-  username: "app_user"
-  password: "SuperSecurePassword123!"
