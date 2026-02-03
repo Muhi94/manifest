@@ -1,0 +1,2025 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @media print {
+            @page {
+                size: A4;
+                margin: 2cm;
+            }
+        }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+            page-break-after: avoid;
+        }
+        h2 {
+            color: #34495e;
+            border-bottom: 2px solid #ecf0f1;
+            padding-bottom: 5px;
+            margin-top: 30px;
+            page-break-after: avoid;
+        }
+        h3 {
+            color: #555;
+            margin-top: 20px;
+            page-break-after: avoid;
+        }
+        h4 {
+            color: #666;
+            margin-top: 15px;
+        }
+        code {
+            background-color: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            page-break-inside: avoid;
+        }
+        pre code {
+            background-color: transparent;
+            padding: 0;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 20px 0;
+            page-break-inside: avoid;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #3498db;
+            color: white;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        blockquote {
+            border-left: 4px solid #3498db;
+            margin: 20px 0;
+            padding-left: 20px;
+            color: #666;
+            font-style: italic;
+        }
+        .newpage {
+            page-break-before: always;
+        }
+        ul, ol {
+            margin: 10px 0;
+            padding-left: 30px;
+        }
+        li {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1 id="kubernetes-manifest-parameter-deep-dive-guide">🎓 Kubernetes Manifest Parameter - Deep Dive Guide</h1>
+<p><em>Dein vollständiges Nachschlagewerk für alle wichtigen Kubernetes-Parameter</em></p>
+<hr />
+<h2 id="inhaltsverzeichnis">📖 Inhaltsverzeichnis</h2>
+<ol>
+<li><a href="#1-deployment-strategies">Deployment Strategies</a></li>
+<li><a href="#2-container-konfiguration">Container Konfiguration</a></li>
+<li><a href="#3-resource-management">Resource Management</a></li>
+<li><a href="#4-health-checks-probes">Health Checks (Probes)</a></li>
+<li><a href="#5-security-context">Security Context</a></li>
+<li><a href="#6-volumes--persistent-storage">Volumes &amp; Persistent Storage</a></li>
+<li><a href="#7-networking-services">Networking (Services)</a></li>
+<li><a href="#8-configmaps--secrets">ConfigMaps &amp; Secrets</a></li>
+<li><a href="#9-init-containers">Init Containers</a></li>
+<li><a href="#10-statefulset-parameter">StatefulSet Parameter</a></li>
+<li><a href="#11-job--cronjob-parameter">Job &amp; CronJob Parameter</a></li>
+<li><a href="#12-ingress-parameter">Ingress Parameter</a></li>
+<li><a href="#13-pod-disruption-budget">Pod Disruption Budget</a></li>
+<li><a href="#14-affinity--anti-affinity">Affinity &amp; Anti-Affinity</a></li>
+<li><a href="#15-namespace--labels">Namespace &amp; Labels</a></li>
+</ol>
+<hr />
+<h2 id="1-deployment-strategies">1. Deployment Strategies</h2>
+<h3 id="11-rollingupdate-vs-recreate">1.1 RollingUpdate vs. Recreate</h3>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Was macht er?</th>
+<th>Warum nutzen?</th>
+<th>Anfänger-Empfehlung</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>strategy.type: RollingUpdate</code></strong></td>
+<td>Ersetzt Pods schrittweise: Erst neue Pods starten, dann alte beenden.</td>
+<td><strong>Zero-Downtime Updates</strong>: Deine App bleibt während des Updates erreichbar.</td>
+<td>✅ <strong>Standardwahl für 95% aller Fälle</strong></td>
+</tr>
+<tr>
+<td><strong><code>strategy.type: Recreate</code></strong></td>
+<td>Beendet <strong>alle</strong> alten Pods sofort, dann startet neue.</td>
+<td>Für Apps, die <strong>keine parallelen Versionen</strong> dulden (z.B. Datenbankmigrationen).</td>
+<td>⚠️ Nur wenn RollingUpdate Probleme macht</td>
+</tr>
+</tbody>
+</table>
+<p><strong>RollingUpdate Parameter im Detail:</strong></p>
+<pre class="codehilite"><code class="language-yaml">strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 1      # Max. Anzahl Pods, die während Update &quot;down&quot; sein dürfen
+    maxSurge: 1            # Max. zusätzliche Pods über gewünschte Anzahl hinaus
+</code></pre>
+
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Was macht er?</th>
+<th>Warum wichtig?</th>
+<th>Anfänger-Empfehlung</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>maxUnavailable</code></strong></td>
+<td>Wie viele Pods gleichzeitig down sein dürfen (Zahl oder %).</td>
+<td>Kontrolliert Verfügbarkeit während Update. <code>0</code> = immer volle Kapazität.</td>
+<td><code>maxUnavailable: 1</code> (ein Pod darf offline sein)</td>
+</tr>
+<tr>
+<td><strong><code>maxSurge</code></strong></td>
+<td>Wie viele zusätzliche Pods temporär gestartet werden dürfen.</td>
+<td>Schnellere Updates, aber mehr Ressourcen.</td>
+<td><code>maxSurge: 1</code> (ein zusätzlicher Pod)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Beispiel-Szenarien:</strong></p>
+<ul>
+<li><strong>Webserver/API</strong>: <code>RollingUpdate</code> mit <code>maxUnavailable: 0, maxSurge: 1</code> → keine Downtime</li>
+<li><strong>Datenbank</strong>: <code>Recreate</code> → verhindert Konflikte zwischen alten/neuen Schemas</li>
+<li><strong>Job-Verarbeitung</strong>: <code>RollingUpdate</code> mit <code>maxUnavailable: 25%</code> → schnellerer Rollout</li>
+</ul>
+<hr />
+<h2 id="2-container-konfiguration">2. Container Konfiguration</h2>
+<h3 id="21-image-pull-policy">2.1 Image Pull Policy</h3>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Was macht er?</th>
+<th>Wann nutzen?</th>
+<th>Anfänger-Empfehlung</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>imagePullPolicy: Always</code></strong></td>
+<td>Lädt Image <strong>bei jedem Pod-Start</strong> von Registry.</td>
+<td>Entwicklung mit <code>:latest</code> Tag, um immer neueste Version zu haben.</td>
+<td>✅ Für <code>:latest</code> Tags (aber besser: versionierte Tags!)</td>
+</tr>
+<tr>
+<td><strong><code>imagePullPolicy: IfNotPresent</code></strong></td>
+<td>Lädt nur, wenn Image lokal nicht existiert.</td>
+<td>Produktion mit festen Versions-Tags (z.B. <code>v1.2.3</code>).</td>
+<td>✅ <strong>Standard für Produktion</strong></td>
+</tr>
+<tr>
+<td><strong><code>imagePullPolicy: Never</code></strong></td>
+<td>Nutzt nur lokal vorhandene Images, lädt nie.</td>
+<td>Lokale Entwicklung mit Minikube/Docker Desktop.</td>
+<td>⚠️ Nur für lokale Tests</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Wichtig:</strong> <br />
+- Tag <code>:latest</code> triggert automatisch <code>Always</code> (auch wenn nicht angegeben)<br />
+- <strong>Best Practice:</strong> Nutze immer versionierte Tags wie <code>v1.2.3</code> statt <code>:latest</code></p>
+<pre class="codehilite"><code class="language-yaml"># ❌ Nicht empfohlen (in Produktion)
+image: myapp:latest
+
+# ✅ Empfohlen
+image: myapp:v1.2.3
+imagePullPolicy: IfNotPresent
+</code></pre>
+
+<h3 id="22-image-pull-secrets">2.2 Image Pull Secrets</h3>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Was macht er?</th>
+<th>Warum wichtig?</th>
+<th>Anfänger-Empfehlung</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>imagePullSecrets</code></strong></td>
+<td>Authentifizierung für private Container-Registries (Harbor, Docker Hub, etc.).</td>
+<td>Ohne dieses Secret kann Kubernetes dein Image nicht pullen → <code>ImagePullBackOff</code> Fehler.</td>
+<td>✅ <strong>Pflicht für private Registries</strong></td>
+</tr>
+</tbody>
+</table>
+<pre class="codehilite"><code class="language-yaml">spec:
+  imagePullSecrets:
+    - name: harbor-regcred  # Name des Secrets mit Registry-Credentials
+  containers:
+    - name: app
+      image: meine-registry.com/app:v1
+</code></pre>
+
+<h3 id="23-container-restart-policy">2.3 Container Restart Policy</h3>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Was macht er?</th>
+<th>Wann nutzen?</th>
+<th>Anfänger-Empfehlung</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>restartPolicy: Always</code></strong></td>
+<td>Pod wird automatisch neu gestartet (auch bei Erfolg).</td>
+<td>Standard für langlebige Apps (Webserver, APIs).</td>
+<td>✅ <strong>Default für Deployments</strong></td>
+</tr>
+<tr>
+<td><strong><code>restartPolicy: OnFailure</code></strong></td>
+<td>Restart nur bei Fehler (Exit Code ≠ 0).</td>
+<td>Jobs, die nur einmal laufen sollen.</td>
+<td>✅ Für Jobs</td>
+</tr>
+<tr>
+<td><strong><code>restartPolicy: Never</code></strong></td>
+<td>Kein automatischer Restart.</td>
+<td>One-Shot-Tasks, Debug-Pods.</td>
+<td>⚠️ Selten nötig</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="3-resource-management">3. Resource Management</h2>
+<p><strong>KRITISCH für Cluster-Stabilität!</strong></p>
+<h3 id="31-requests-vs-limits">3.1 Requests vs. Limits</h3>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Was macht er?</th>
+<th>Warum lebenswichtig?</th>
+<th>Anfänger-Empfehlung</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>resources.requests</code></strong></td>
+<td><strong>Garantierte</strong> Ressourcen: Scheduler stellt sicher, dass Node genug hat.</td>
+<td>Pod wird nur auf Node platziert, der genug freie Ressourcen hat.</td>
+<td>✅ <strong>IMMER setzen!</strong></td>
+</tr>
+<tr>
+<td><strong><code>resources.limits</code></strong></td>
+<td><strong>Maximum</strong> an Ressourcen: Container wird bei Überschreitung gedrosselt/gekillt.</td>
+<td>Verhindert, dass ein Container den ganzen Cluster lahmlegt.</td>
+<td>✅ <strong>IMMER setzen!</strong></td>
+</tr>
+</tbody>
+</table>
+<pre class="codehilite"><code class="language-yaml">resources:
+  requests:      # &quot;Ich brauche mindestens...&quot;
+    memory: &quot;256Mi&quot;
+    cpu: &quot;250m&quot;
+  limits:        # &quot;Ich darf maximal...&quot;
+    memory: &quot;512Mi&quot;
+    cpu: &quot;500m&quot;
+</code></pre>
+
+<h3 id="32-cpu-einheiten">3.2 CPU-Einheiten</h3>
+<table>
+<thead>
+<tr>
+<th>Wert</th>
+<th>Bedeutung</th>
+<th>Wann nutzen?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>1</code> / <code>1000m</code></td>
+<td>1 voller CPU-Core</td>
+<td>Rechenintensive Apps</td>
+</tr>
+<tr>
+<td><code>500m</code></td>
+<td>0.5 CPU-Core (50%)</td>
+<td>Normale Webanwendungen</td>
+</tr>
+<tr>
+<td><code>100m</code></td>
+<td>0.1 CPU-Core (10%)</td>
+<td>Leichtgewichtige Services</td>
+</tr>
+</tbody>
+</table>
+<p><strong>m</strong> = "Milli-CPU" (1000m = 1 Core)</p>
+<h3 id="33-memory-einheiten">3.3 Memory-Einheiten</h3>
+<table>
+<thead>
+<tr>
+<th>Wert</th>
+<th>Bedeutung</th>
+<th>Wann nutzen?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>1Gi</code></td>
+<td>1 Gibibyte (1024³ Bytes)</td>
+<td>Datenbanken, Memory-intensive Apps</td>
+</tr>
+<tr>
+<td><code>512Mi</code></td>
+<td>512 Mebibyte</td>
+<td>Standard Web-Apps</td>
+</tr>
+<tr>
+<td><code>128Mi</code></td>
+<td>128 Mebibyte</td>
+<td>Sidecar-Container, kleine Services</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Wichtig:</strong> <code>Mi</code> = Mebibyte (1024²), <code>M</code> = Megabyte (1000²) → bevorzuge <code>Mi</code> für Klarheit</p>
+<h3 id="34-was-passiert-bei-uberschreitung">3.4 Was passiert bei Überschreitung?</h3>
+<table>
+<thead>
+<tr>
+<th>Ressource</th>
+<th>Überschreitung von <code>requests</code></th>
+<th>Überschreitung von <code>limits</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>CPU</strong></td>
+<td>Pod wird gedrosselt (throttled), läuft langsamer</td>
+<td>Pod wird gedrosselt, <strong>nie</strong> gekillt</td>
+</tr>
+<tr>
+<td><strong>Memory</strong></td>
+<td>Pod läuft weiter (nutzt "Burst")</td>
+<td>Pod wird <strong>sofort gekillt</strong> (OOMKilled)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Anfänger-Regel:</strong><br />
+1. <strong>Starte mit:</strong> <code>requests = limits</code> (vorhersehbare Performance)<br />
+2. <strong>Monitoring:</strong> Schau dir echte Nutzung mit <code>kubectl top pods</code> an<br />
+3. <strong>Optimiere:</strong> Passe Werte nach echten Daten an</p>
+<pre class="codehilite"><code class="language-yaml"># ✅ Guter Start für kleine Web-App
+resources:
+  requests:
+    memory: &quot;256Mi&quot;
+    cpu: &quot;100m&quot;
+  limits:
+    memory: &quot;512Mi&quot;
+    cpu: &quot;500m&quot;
+
+# ✅ Datenbank (mehr Memory, stabiler)
+resources:
+  requests:
+    memory: &quot;1Gi&quot;
+    cpu: &quot;500m&quot;
+  limits:
+    memory: &quot;2Gi&quot;
+    cpu: &quot;1000m&quot;
+</code></pre>
+
+<hr />
+<h2 id="4-health-checks-probes">4. Health Checks (Probes)</h2>
+<p><strong>Unterschied verstehen = kritisch für App-Stabilität!</strong></p>
+<h3 id="41-die-3-probe-typen">4.1 Die 3 Probe-Typen</h3>
+<table>
+<thead>
+<tr>
+<th>Probe</th>
+<th>Was prüft sie?</th>
+<th>Wann wird sie aktiv?</th>
+<th>Bei Fehler?</th>
+<th>Anfänger-Empfehlung</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>startupProbe</code></strong></td>
+<td>"Ist die App erstmals fertig gestartet?"</td>
+<td>Nur beim <strong>ersten Start</strong></td>
+<td>Pod wird neu gestartet</td>
+<td>✅ <strong>Bei langsam startenden Apps</strong> (&gt;30s)</td>
+</tr>
+<tr>
+<td><strong><code>livenessProbe</code></strong></td>
+<td>"Läuft die App noch oder ist sie abgestürzt?"</td>
+<td><strong>Dauerhaft</strong> nach Start</td>
+<td>Pod wird <strong>neu gestartet</strong></td>
+<td>✅ <strong>Immer setzen!</strong></td>
+</tr>
+<tr>
+<td><strong><code>readinessProbe</code></strong></td>
+<td>"Ist die App bereit, Traffic zu empfangen?"</td>
+<td><strong>Dauerhaft</strong></td>
+<td>Traffic wird <strong>gestoppt</strong>, Pod bleibt laufen</td>
+<td>✅ <strong>Immer setzen!</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="42-probe-mechanismen">4.2 Probe-Mechanismen</h3>
+<table>
+<thead>
+<tr>
+<th>Typ</th>
+<th>Was passiert?</th>
+<th>Wann nutzen?</th>
+<th>Beispiel</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>httpGet</code></strong></td>
+<td>HTTP-Request an Endpoint</td>
+<td>Web-Apps, APIs</td>
+<td><code>GET /health</code></td>
+</tr>
+<tr>
+<td><strong><code>tcpSocket</code></strong></td>
+<td>TCP-Verbindung zu Port</td>
+<td>Datenbanken, Redis</td>
+<td>Port <code>5432</code></td>
+</tr>
+<tr>
+<td><strong><code>exec</code></strong></td>
+<td>Shell-Command ausführen</td>
+<td>Komplexe Checks</td>
+<td><code>pg_isready</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="43-probe-parameter-im-detail">4.3 Probe-Parameter im Detail</h3>
+<pre class="codehilite"><code class="language-yaml">livenessProbe:
+  httpGet:
+    path: /health        # Endpoint (erstelle einen in deiner App!)
+    port: 8080
+  initialDelaySeconds: 30  # Warte 30s nach Start, bevor erste Prüfung
+  periodSeconds: 10        # Prüfe alle 10 Sekunden
+  timeoutSeconds: 5        # Request darf max. 5s dauern
+  failureThreshold: 3      # Nach 3 Fehlern → Pod neu starten
+  successThreshold: 1      # Nach 1 Erfolg → OK
+</code></pre>
+
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Was macht er?</th>
+<th>Typischer Wert</th>
+<th>Warum wichtig?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>initialDelaySeconds</code></strong></td>
+<td>Wartezeit vor erster Prüfung</td>
+<td>10-60s</td>
+<td>App braucht Zeit zum Starten</td>
+</tr>
+<tr>
+<td><strong><code>periodSeconds</code></strong></td>
+<td>Intervall zwischen Prüfungen</td>
+<td>10s</td>
+<td>Zu oft = Last, zu selten = langsame Fehlererkennung</td>
+</tr>
+<tr>
+<td><strong><code>timeoutSeconds</code></strong></td>
+<td>Max. Wartezeit pro Prüfung</td>
+<td>1-5s</td>
+<td>Überlastete App soll nicht als tot gelten</td>
+</tr>
+<tr>
+<td><strong><code>failureThreshold</code></strong></td>
+<td>Fehler bis Aktion (Restart/Traffic-Stop)</td>
+<td>3</td>
+<td>Verhindert Flapping bei kurzen Aussetzern</td>
+</tr>
+<tr>
+<td><strong><code>successThreshold</code></strong></td>
+<td>Erfolge bis "gesund"</td>
+<td>1 (liveness), 2-3 (readiness)</td>
+<td>Stabilität bei intermittierenden Problemen</td>
+</tr>
+</tbody>
+</table>
+<h3 id="44-praxis-beispiele">4.4 Praxis-Beispiele</h3>
+<h4 id="beispiel-1-web-api-mit-langsamer-initialisierung">Beispiel 1: Web-API mit langsamer Initialisierung</h4>
+<pre class="codehilite"><code class="language-yaml">containers:
+  - name: api
+    image: my-api:v1
+    ports:
+      - containerPort: 8080
+
+    # Startup: Für Apps, die lange brauchen (DB-Verbindung, Cache-Warmup)
+    startupProbe:
+      httpGet:
+        path: /health
+        port: 8080
+      initialDelaySeconds: 0
+      periodSeconds: 5
+      failureThreshold: 30       # 30 * 5s = 2.5 Minuten Zeit zum Starten
+
+    # Liveness: Ist die App noch am Leben?
+    livenessProbe:
+      httpGet:
+        path: /health            # Leichtgewichtiger Check!
+        port: 8080
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+
+    # Readiness: Kann die App Traffic verarbeiten?
+    readinessProbe:
+      httpGet:
+        path: /ready             # Kann DB-Verbindung prüfen
+        port: 8080
+      periodSeconds: 5
+      timeoutSeconds: 3
+      failureThreshold: 2
+</code></pre>
+
+<h4 id="beispiel-2-postgresql-datenbank">Beispiel 2: PostgreSQL Datenbank</h4>
+<pre class="codehilite"><code class="language-yaml">containers:
+  - name: postgres
+    image: postgres:15
+
+    # Liveness: Ist Postgres-Prozess noch da?
+    livenessProbe:
+      exec:
+        command:
+          - /bin/sh
+          - -c
+          - pg_isready -U $POSTGRES_USER
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      failureThreshold: 3
+
+    # Readiness: Kann Postgres Queries verarbeiten?
+    readinessProbe:
+      exec:
+        command:
+          - /bin/sh
+          - -c
+          - pg_isready -U $POSTGRES_USER
+      initialDelaySeconds: 5
+      periodSeconds: 5
+      failureThreshold: 3
+</code></pre>
+
+<h3 id="45-typische-fehler-vermeiden">4.5 Typische Fehler vermeiden</h3>
+<table>
+<thead>
+<tr>
+<th>❌ Fehler</th>
+<th>✅ Lösung</th>
+<th>Warum?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Kein <code>/health</code> Endpoint</td>
+<td>Erstelle einen in deiner App</td>
+<td>Probes brauchen etwas zum Prüfen</td>
+</tr>
+<tr>
+<td><code>initialDelaySeconds</code> zu kurz</td>
+<td>Messe echte Startzeit deiner App</td>
+<td>Sonst Restart-Loop</td>
+</tr>
+<tr>
+<td>Liveness = schwerer Check (DB-Query)</td>
+<td>Liveness = leicht, Readiness = schwer</td>
+<td>Liveness killt Pod → nur bei echtem Crash</td>
+</tr>
+<tr>
+<td><code>failureThreshold: 1</code></td>
+<td>Mindestens <code>3</code></td>
+<td>Verhindert Flapping bei Netzwerk-Hickups</td>
+</tr>
+<tr>
+<td>Readiness fehlt</td>
+<td>Immer setzen!</td>
+<td>Sonst bekommt Pod Traffic, bevor er bereit ist</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Anfänger-Faustregel:</strong><br />
+1. <strong>Erstelle <code>/health</code> Endpoint</strong> in deiner App (antwortet <code>200 OK</code>)<br />
+2. <strong>StartupProbe:</strong> Nur bei Apps mit &gt;30s Startzeit<br />
+3. <strong>LivenessProbe:</strong> Immer! Prüft, ob App "lebt"<br />
+4. <strong>ReadinessProbe:</strong> Immer! Prüft, ob App Traffic verarbeiten kann</p>
+<hr />
+<h2 id="5-security-context">5. Security Context</h2>
+<p><strong>Sicherheit von Anfang an!</strong></p>
+<h3 id="51-pod-security-context">5.1 Pod Security Context</h3>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Was macht er?</th>
+<th>Warum wichtig?</th>
+<th>Anfänger-Empfehlung</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>runAsNonRoot: true</code></strong></td>
+<td>Erzwingt, dass Container <strong>nicht als root</strong> läuft</td>
+<td>Verhindert Privilege-Escalation-Angriffe</td>
+<td>✅ <strong>IMMER aktivieren</strong></td>
+</tr>
+<tr>
+<td><strong><code>runAsUser: 1000</code></strong></td>
+<td>Setzt User-ID explizit</td>
+<td>Vorhersehbare Permissions</td>
+<td>✅ Bei Permission-Problemen</td>
+</tr>
+<tr>
+<td><strong><code>fsGroup: 1000</code></strong></td>
+<td>Setzt Group-ID für Volumes</td>
+<td>Volumes sind für User lesbar/schreibbar</td>
+<td>✅ Bei Volume-Permission-Fehlern</td>
+</tr>
+</tbody>
+</table>
+<pre class="codehilite"><code class="language-yaml">spec:
+  securityContext:
+    runAsNonRoot: true     # ✅ Niemals als root!
+    runAsUser: 1000        # User-ID
+    fsGroup: 1000          # Group für Volumes
+</code></pre>
+
+<h3 id="52-container-security-context">5.2 Container Security Context</h3>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Was macht er?</th>
+<th>Warum nutzen?</th>
+<th>Anfänger-Empfehlung</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>readOnlyRootFilesystem: true</code></strong></td>
+<td>Container kann nur in <code>/tmp</code> und Volumes schreiben</td>
+<td>Verhindert Malware-Installation im Container</td>
+<td>✅ Wenn App es unterstützt</td>
+</tr>
+<tr>
+<td><strong><code>allowPrivilegeEscalation: false</code></strong></td>
+<td>Verhindert, dass Prozess mehr Rechte bekommt</td>
+<td>Schließt kritische Sicherheitslücke</td>
+<td>✅ <strong>IMMER setzen</strong></td>
+</tr>
+<tr>
+<td><strong><code>capabilities.drop: [ALL]</code></strong></td>
+<td>Entfernt alle Linux-Capabilities</td>
+<td>Minimale Rechte = minimales Risiko</td>
+<td>✅ <strong>Best Practice</strong></td>
+</tr>
+</tbody>
+</table>
+<pre class="codehilite"><code class="language-yaml">containers:
+  - name: app
+    image: my-app:v1
+    securityContext:
+      allowPrivilegeEscalation: false   # ✅ Keine Rechte-Erhöhung
+      runAsNonRoot: true                # ✅ Nicht als root
+      readOnlyRootFilesystem: true      # ✅ Filesystem read-only
+      capabilities:
+        drop:
+          - ALL                         # ✅ Alle Capabilities entfernen
+</code></pre>
+
+<h3 id="53-praxis-beispiel-sichere-web-app">5.3 Praxis-Beispiel: Sichere Web-App</h3>
+<pre class="codehilite"><code class="language-yaml">apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: secure-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: secure-app
+  template:
+    metadata:
+      labels:
+        app: secure-app
+    spec:
+      # Pod-Level Security
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+
+      containers:
+        - name: app
+          image: my-secure-app:v1
+
+          # Container-Level Security
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+
+          # Wenn App in /tmp schreiben muss
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+
+      volumes:
+        - name: tmp
+          emptyDir: {}   # Temporäres Volume für /tmp
+</code></pre>
+
+<h3 id="54-haufige-permission-probleme-losen">5.4 Häufige Permission-Probleme lösen</h3>
+<p><strong>Problem:</strong> <code>Permission denied</code> beim Zugriff auf Volume</p>
+<pre class="codehilite"><code class="language-yaml"># ✅ Lösung:
+spec:
+  securityContext:
+    fsGroup: 999    # Postgres nutzt User 999
+  containers:
+    - name: postgres
+      image: postgres:15
+      securityContext:
+        runAsUser: 999
+</code></pre>
+
+<p><strong>Problem:</strong> App braucht Schreibrechte im Container</p>
+<pre class="codehilite"><code class="language-yaml"># ✅ Lösung: Nutze Volumes statt readOnlyRootFilesystem
+containers:
+  - name: app
+    securityContext:
+      readOnlyRootFilesystem: true
+    volumeMounts:
+      - name: temp-data
+        mountPath: /app/temp
+volumes:
+  - name: temp-data
+    emptyDir: {}
+</code></pre>
+
+<hr />
+<h2 id="6-volumes-persistent-storage">6. Volumes &amp; Persistent Storage</h2>
+<h3 id="61-volume-typen-im-uberblick">6.1 Volume-Typen im Überblick</h3>
+<table>
+<thead>
+<tr>
+<th>Typ</th>
+<th>Lebensdauer</th>
+<th>Wann nutzen?</th>
+<th>Anfänger-Empfehlung</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>emptyDir</code></strong></td>
+<td>Pod-Lifetime (gelöscht bei Pod-Neustart)</td>
+<td>Temporäre Daten, Cache</td>
+<td>✅ Für nicht-kritische Daten</td>
+</tr>
+<tr>
+<td><strong><code>hostPath</code></strong></td>
+<td>Auf Node-Disk, überlebt Pod-Neustarts</td>
+<td>Lokales Testing (Minikube)</td>
+<td>⚠️ <strong>NUR für Entwicklung!</strong></td>
+</tr>
+<tr>
+<td><strong><code>persistentVolumeClaim</code></strong></td>
+<td>Persistent, überlebt Pod/Node-Neustarts</td>
+<td>Datenbanken, User-Uploads</td>
+<td>✅ <strong>Für Produktion!</strong></td>
+</tr>
+<tr>
+<td><strong><code>configMap</code></strong></td>
+<td>Konfigurationsdateien als Volume</td>
+<td>Config-Files in Container mounten</td>
+<td>✅ Für Configs</td>
+</tr>
+<tr>
+<td><strong><code>secret</code></strong></td>
+<td>Sensible Daten als Volume</td>
+<td>Certificates, Keys</td>
+<td>✅ Für Secrets</td>
+</tr>
+</tbody>
+</table>
+<h3 id="62-emptydir-temporarer-storage">6.2 emptyDir - Temporärer Storage</h3>
+<pre class="codehilite"><code class="language-yaml">volumes:
+  - name: cache
+    emptyDir: {}           # Standard: Disk
+
+  - name: fast-cache
+    emptyDir:
+      medium: Memory       # In RAM (schnell, aber begrenzt!)
+      sizeLimit: 100Mi     # Max. 100MB
+</code></pre>
+
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Was macht er?</th>
+<th>Wann nutzen?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>emptyDir: {}</code></td>
+<td>Temporäres Verzeichnis auf Disk</td>
+<td>Logs, temp files, Cache</td>
+</tr>
+<tr>
+<td><code>medium: Memory</code></td>
+<td>Nutzt RAM statt Disk</td>
+<td>Performance-kritische Caches</td>
+</tr>
+<tr>
+<td><code>sizeLimit</code></td>
+<td>Max. Größe</td>
+<td>RAM-Schutz, Resource-Limits</td>
+</tr>
+</tbody>
+</table>
+<h3 id="63-persistentvolumeclaim-pvc">6.3 PersistentVolumeClaim (PVC)</h3>
+<p><strong>Für alle Daten, die erhalten bleiben müssen!</strong></p>
+<pre class="codehilite"><code class="language-yaml"># PVC erstellen
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-data
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false  # ✅ ArgoCD soll nicht löschen!
+spec:
+  accessModes:
+    - ReadWriteOnce      # Nur 1 Pod kann schreiben
+  resources:
+    requests:
+      storage: 10Gi      # 10 GB Storage
+  storageClassName: standard  # Abhängig vom Cluster
+</code></pre>
+
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Was macht er?</th>
+<th>Optionen</th>
+<th>Anfänger-Empfehlung</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>accessModes</code></strong></td>
+<td>Wer darf wie zugreifen?</td>
+<td>Siehe unten</td>
+<td><code>ReadWriteOnce</code> (Standard)</td>
+</tr>
+<tr>
+<td><strong><code>storage</code></strong></td>
+<td>Wie viel Speicher?</td>
+<td><code>1Gi</code>, <code>10Gi</code>, <code>100Gi</code></td>
+<td>Start mit kleinem Wert, erweitern bei Bedarf</td>
+</tr>
+<tr>
+<td><strong><code>storageClassName</code></strong></td>
+<td>Welche Storage-Klasse?</td>
+<td><code>standard</code>, <code>fast-ssd</code>, etc.</td>
+<td>Nutze Cluster-Default</td>
+</tr>
+</tbody>
+</table>
+<h4 id="access-modes-im-detail">Access Modes im Detail</h4>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Abkürzung</th>
+<th>Was bedeutet es?</th>
+<th>Wann nutzen?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>ReadWriteOnce</strong></td>
+<td>RWO</td>
+<td>1 Pod (auf 1 Node) kann lesen+schreiben</td>
+<td>Datenbanken, Apps mit 1 Replica</td>
+</tr>
+<tr>
+<td><strong>ReadOnlyMany</strong></td>
+<td>ROX</td>
+<td>Viele Pods können lesen</td>
+<td>Shared Config-Files</td>
+</tr>
+<tr>
+<td><strong>ReadWriteMany</strong></td>
+<td>RWX</td>
+<td>Viele Pods können lesen+schreiben</td>
+<td>Shared Storage (NFS), Multi-Pod-Apps</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Wichtig:</strong> Nicht alle Storage-Klassen unterstützen alle Modes!</p>
+<h3 id="64-pvc-in-statefulset-nutzen">6.4 PVC in StatefulSet nutzen</h3>
+<pre class="codehilite"><code class="language-yaml">apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+
+  # volumeClaimTemplates: Automatisch PVC pro Replica erstellen
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [&quot;ReadWriteOnce&quot;]
+        resources:
+          requests:
+            storage: 10Gi
+</code></pre>
+
+<h3 id="65-reclaim-policy-was-passiert-bei-loschung">6.5 Reclaim Policy - Was passiert bei Löschung?</h3>
+<p>Wird im PersistentVolume (PV) definiert, nicht im PVC:</p>
+<table>
+<thead>
+<tr>
+<th>Policy</th>
+<th>Was passiert bei PVC-Löschung?</th>
+<th>Wann nutzen?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Retain</strong></td>
+<td>Daten bleiben erhalten, manuelles Cleanup nötig</td>
+<td>Produktion (Datensicherheit)</td>
+</tr>
+<tr>
+<td><strong>Delete</strong></td>
+<td>PV und Daten werden gelöscht</td>
+<td>Development</td>
+</tr>
+<tr>
+<td><strong>Recycle</strong></td>
+<td>Veraltet, nicht nutzen</td>
+<td>-</td>
+</tr>
+</tbody>
+</table>
+<pre class="codehilite"><code class="language-yaml"># PV mit Retain-Policy
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: postgres-pv
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain  # ✅ Daten bleiben!
+  storageClassName: standard
+</code></pre>
+
+<hr />
+<h2 id="7-networking-services">7. Networking (Services)</h2>
+<p><strong>Services machen Pods erreichbar</strong></p>
+<h3 id="71-service-typen">7.1 Service-Typen</h3>
+<table>
+<thead>
+<tr>
+<th>Typ</th>
+<th>Was macht er?</th>
+<th>Erreichbar von?</th>
+<th>Wann nutzen?</th>
+<th>Anfänger-Empfehlung</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>ClusterIP</strong></td>
+<td>Interne IP, nur im Cluster</td>
+<td>Nur innerhalb des Clusters</td>
+<td>Backend-Services, Datenbanken</td>
+<td>✅ <strong>Standard</strong></td>
+</tr>
+<tr>
+<td><strong>NodePort</strong></td>
+<td>Port auf allen Nodes</td>
+<td>Von außen über <code>&lt;NodeIP&gt;:&lt;NodePort&gt;</code></td>
+<td>Lokales Testing, Development</td>
+<td>✅ Für lokale Tests</td>
+</tr>
+<tr>
+<td><strong>LoadBalancer</strong></td>
+<td>Externer Load Balancer</td>
+<td>Internet (öffentliche IP)</td>
+<td>Cloud-Umgebungen (AWS, GCP, Azure)</td>
+<td>✅ In Cloud-Prod</td>
+</tr>
+<tr>
+<td><strong>ExternalName</strong></td>
+<td>DNS-Alias</td>
+<td>-</td>
+<td>Externe Services (z.B. AWS RDS)</td>
+<td>⚠️ Fortgeschritten</td>
+</tr>
+</tbody>
+</table>
+<h3 id="72-clusterip-standard">7.2 ClusterIP (Standard)</h3>
+<pre class="codehilite"><code class="language-yaml">apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service
+spec:
+  type: ClusterIP        # Standard (kann auch weggelassen werden)
+  selector:
+    app: postgres        # Welche Pods gehören zu diesem Service?
+  ports:
+    - name: postgres
+      port: 5432         # Port des Services (wie andere ihn ansprechen)
+      targetPort: 5432   # Port am Container
+      protocol: TCP
+</code></pre>
+
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Was macht er?</th>
+<th>Warum wichtig?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>selector</code></strong></td>
+<td>Label-Matching zu Pods</td>
+<td>Definiert, welche Pods Traffic bekommen</td>
+</tr>
+<tr>
+<td><strong><code>port</code></strong></td>
+<td>Service-Port</td>
+<td>Port, über den andere den Service ansprechen</td>
+</tr>
+<tr>
+<td><strong><code>targetPort</code></strong></td>
+<td>Container-Port</td>
+<td>Port, auf dem Container lauscht</td>
+</tr>
+</tbody>
+</table>
+<p><strong>DNS:</strong> Service ist erreichbar über <code>postgres-service.development.svc.cluster.local</code> (oder kurz: <code>postgres-service</code>)</p>
+<h3 id="73-nodeport-fur-lokale-entwicklung">7.3 NodePort (für lokale Entwicklung)</h3>
+<pre class="codehilite"><code class="language-yaml">apiVersion: v1
+kind: Service
+metadata:
+  name: harbor
+spec:
+  type: NodePort
+  selector:
+    app: harbor
+  ports:
+    - port: 80           # ClusterIP Port
+      targetPort: 8080   # Container Port
+      nodePort: 30002    # ✅ Port auf Node (30000-32767)
+</code></pre>
+
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Wert</th>
+<th>Bedeutung</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>nodePort</code></strong></td>
+<td>30000-32767</td>
+<td>Fester Port auf allen Nodes</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Erreichbar über:</strong> <code>http://localhost:30002</code> (bei Minikube/Docker Desktop)</p>
+<h3 id="74-loadbalancer-cloud">7.4 LoadBalancer (Cloud)</h3>
+<pre class="codehilite"><code class="language-yaml">apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+spec:
+  type: LoadBalancer     # ✅ Cloud-Provider erstellt Load Balancer
+  selector:
+    app: frontend
+  ports:
+    - port: 80
+      targetPort: 8080
+</code></pre>
+
+<p><strong>Cloud-Provider (AWS/GCP/Azure) erstellt automatisch externen Load Balancer mit öffentlicher IP.</strong></p>
+<h3 id="75-headless-service-fur-statefulsets">7.5 Headless Service (für StatefulSets)</h3>
+<pre class="codehilite"><code class="language-yaml">apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+spec:
+  clusterIP: None        # ✅ Headless = keine ClusterIP
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+</code></pre>
+
+<p><strong>Wann nutzen?</strong> <br />
+- StatefulSets, wo jeder Pod direkt ansprechbar sein soll<br />
+- Service Discovery per DNS: <code>postgres-0.postgres.development.svc.cluster.local</code></p>
+<hr />
+<h2 id="8-configmaps-secrets">8. ConfigMaps &amp; Secrets</h2>
+<p><strong>Konfiguration von Code trennen!</strong></p>
+<h3 id="81-configmap-vs-secret">8.1 ConfigMap vs. Secret</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>ConfigMap</th>
+<th>Secret</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Für</strong></td>
+<td>Nicht-sensible Configs</td>
+<td>Passwörter, Tokens, Keys</td>
+</tr>
+<tr>
+<td><strong>Kodierung</strong></td>
+<td>Klartext</td>
+<td>Base64 (⚠️ nicht verschlüsselt!)</td>
+</tr>
+<tr>
+<td><strong>Wann nutzen?</strong></td>
+<td>App-Settings, Feature-Flags</td>
+<td>DB-Passwörter, API-Keys</td>
+</tr>
+</tbody>
+</table>
+<h3 id="82-configmap-erstellen">8.2 ConfigMap erstellen</h3>
+<pre class="codehilite"><code class="language-yaml">apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+data:
+  # Key-Value Pairs
+  DATABASE_HOST: postgres-service
+  DATABASE_NAME: studentsdb
+  LOG_LEVEL: &quot;info&quot;
+
+  # Oder ganze Dateien
+  app.properties: |
+    server.port=8080
+    spring.datasource.url=jdbc:postgresql://postgres:5432/db
+</code></pre>
+
+<h3 id="83-configmap-nutzen-als-environment-variables">8.3 ConfigMap nutzen: Als Environment Variables</h3>
+<pre class="codehilite"><code class="language-yaml">containers:
+  - name: app
+    image: my-app:v1
+    env:
+      # ✅ Einzelne Werte
+      - name: DATABASE_HOST
+        valueFrom:
+          configMapKeyRef:
+            name: app-config
+            key: DATABASE_HOST
+
+    # ✅ ALLE Werte auf einmal
+    envFrom:
+      - configMapRef:
+          name: app-config
+</code></pre>
+
+<h3 id="84-configmap-nutzen-als-volume-datei">8.4 ConfigMap nutzen: Als Volume (Datei)</h3>
+<pre class="codehilite"><code class="language-yaml">containers:
+  - name: app
+    volumeMounts:
+      - name: config
+        mountPath: /etc/config
+        readOnly: true
+volumes:
+  - name: config
+    configMap:
+      name: app-config
+</code></pre>
+
+<p><strong>Ergebnis:</strong> <code>/etc/config/app.properties</code> enthält Config-File</p>
+<h3 id="85-secret-erstellen">8.5 Secret erstellen</h3>
+<pre class="codehilite"><code class="language-yaml">apiVersion: v1
+kind: Secret
+metadata:
+  name: db-credentials
+type: Opaque
+data:
+  username: YXBwX3VzZXI=        # Base64: app_user
+  password: bXlwYXNzd29yZDEyMw==  # Base64: mypassword123
+</code></pre>
+
+<p><strong>Base64 kodieren:</strong></p>
+<pre class="codehilite"><code class="language-powershell">[Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes(&quot;app_user&quot;))
+</code></pre>
+
+<h3 id="86-secret-nutzen">8.6 Secret nutzen</h3>
+<pre class="codehilite"><code class="language-yaml">containers:
+  - name: app
+    env:
+      # ✅ Als Environment Variable
+      - name: DB_USER
+        valueFrom:
+          secretKeyRef:
+            name: db-credentials
+            key: username
+
+      - name: DB_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: db-credentials
+            key: password
+</code></pre>
+
+<h3 id="87-sealedsecret-fur-gitops">8.7 SealedSecret (für GitOps)</h3>
+<p><strong>Problem:</strong> Normale Secrets sind nur Base64, nicht verschlüsselt!</p>
+<p><strong>Lösung:</strong> SealedSecrets (verschlüsselt mit Public-Key)</p>
+<pre class="codehilite"><code class="language-yaml">apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: db-credentials
+spec:
+  encryptedData:
+    username: AgBH8j2... # ✅ Echt verschlüsselt!
+    password: AgCK9d...
+</code></pre>
+
+<p><strong>Erstellen:</strong></p>
+<pre class="codehilite"><code class="language-bash">kubeseal --format yaml &lt; db-credentials-secret.yaml &gt; db-credentials-sealed.yaml
+</code></pre>
+
+<hr />
+<h2 id="9-init-containers">9. Init Containers</h2>
+<p><strong>Führen Vorbereitungs-Tasks aus, bevor Haupt-Container startet</strong></p>
+<h3 id="91-was-sind-init-containers">9.1 Was sind Init Containers?</h3>
+<table>
+<thead>
+<tr>
+<th>Eigenschaft</th>
+<th>Init Container</th>
+<th>Haupt-Container</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Wann startet?</strong></td>
+<td>Vor Haupt-Container</td>
+<td>Nach Init-Containern</td>
+</tr>
+<tr>
+<td><strong>Laufen parallel?</strong></td>
+<td>Nein (sequenziell)</td>
+<td>Ja</td>
+</tr>
+<tr>
+<td><strong>Bei Fehler?</strong></td>
+<td>Pod startet nicht</td>
+<td>Pod wird neu gestartet</td>
+</tr>
+<tr>
+<td><strong>Wann nutzen?</strong></td>
+<td>Setup-Tasks</td>
+<td>Eigentliche App</td>
+</tr>
+</tbody>
+</table>
+<h3 id="92-typische-use-cases">9.2 Typische Use Cases</h3>
+<ol>
+<li><strong>Warten auf Abhängigkeiten</strong> (z.B. Datenbank)</li>
+<li><strong>Daten vorbereiten</strong> (z.B. Git-Repo klonen)</li>
+<li><strong>Permissions setzen</strong> (z.B. <code>chown</code> auf Volume)</li>
+<li><strong>Config generieren</strong></li>
+</ol>
+<h3 id="93-beispiel-warten-auf-datenbank">9.3 Beispiel: Warten auf Datenbank</h3>
+<pre class="codehilite"><code class="language-yaml">spec:
+  # Init Container läuft ZUERST
+  initContainers:
+    - name: wait-for-postgres
+      image: busybox:1.36
+      command:
+        - sh
+        - -c
+        - |
+          echo &quot;Waiting for postgres...&quot;
+          until nc -z postgres-service 5432; do
+            echo &quot;Postgres not ready, waiting...&quot;
+            sleep 2
+          done
+          echo &quot;Postgres is ready!&quot;
+
+  # Haupt-Container startet erst, wenn Init fertig ist
+  containers:
+    - name: app
+      image: my-app:v1
+      env:
+        - name: DATABASE_HOST
+          value: postgres-service
+</code></pre>
+
+<h3 id="94-beispiel-volume-permissions">9.4 Beispiel: Volume Permissions</h3>
+<pre class="codehilite"><code class="language-yaml">spec:
+  initContainers:
+    - name: fix-permissions
+      image: busybox:1.36
+      command:
+        - sh
+        - -c
+        - chown -R 999:999 /var/lib/postgresql/data
+      volumeMounts:
+        - name: data
+          mountPath: /var/lib/postgresql/data
+      securityContext:
+        runAsUser: 0  # Muss als root laufen für chown
+
+  containers:
+    - name: postgres
+      image: postgres:15
+      volumeMounts:
+        - name: data
+          mountPath: /var/lib/postgresql/data
+</code></pre>
+
+<h3 id="95-mehrere-init-container-sequenziell">9.5 Mehrere Init Container (sequenziell)</h3>
+<pre class="codehilite"><code class="language-yaml">spec:
+  initContainers:
+    # 1. Init Container
+    - name: clone-repo
+      image: git:2.40
+      command: ['git', 'clone', 'https://...', '/data']
+      volumeMounts:
+        - name: data
+          mountPath: /data
+
+    # 2. Init Container (läuft nach clone-repo)
+    - name: install-deps
+      image: node:18
+      command: ['npm', 'install']
+      workingDir: /data
+      volumeMounts:
+        - name: data
+          mountPath: /data
+
+  # Haupt-Container startet als Letztes
+  containers:
+    - name: app
+      image: node:18
+      command: ['npm', 'start']
+      volumeMounts:
+        - name: data
+          mountPath: /app
+</code></pre>
+
+<p><strong>Reihenfolge:</strong> <code>clone-repo</code> → <code>install-deps</code> → <code>app</code></p>
+<hr />
+<h2 id="10-statefulset-parameter">10. StatefulSet Parameter</h2>
+<p><strong>Für stateful Apps (Datenbanken, Message Queues)</strong></p>
+<h3 id="101-statefulset-vs-deployment">10.1 StatefulSet vs. Deployment</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Deployment</th>
+<th>StatefulSet</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Pod-Namen</strong></td>
+<td>Zufällig (z.B. <code>app-abc123-xyz</code>)</td>
+<td>Stabil (z.B. <code>postgres-0</code>, <code>postgres-1</code>)</td>
+</tr>
+<tr>
+<td><strong>Reihenfolge</strong></td>
+<td>Parallel</td>
+<td>Sequenziell (0 → 1 → 2)</td>
+</tr>
+<tr>
+<td><strong>Storage</strong></td>
+<td>Shared oder keins</td>
+<td>Eigenes PVC pro Pod</td>
+</tr>
+<tr>
+<td><strong>DNS</strong></td>
+<td>Service-ClusterIP</td>
+<td>Jeder Pod: <code>pod-name.service.ns.svc</code></td>
+</tr>
+<tr>
+<td><strong>Wann nutzen?</strong></td>
+<td>Stateless Apps</td>
+<td>Datenbanken, Zookeeper, Kafka</td>
+</tr>
+</tbody>
+</table>
+<h3 id="102-statefulset-besonderheiten">10.2 StatefulSet Besonderheiten</h3>
+<pre class="codehilite"><code class="language-yaml">apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+spec:
+  serviceName: postgres   # ✅ Headless Service (clusterIP: None)
+  replicas: 3
+  selector:
+    matchLabels:
+      app: postgres
+
+  # Pod-Template (wie bei Deployment)
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+
+  # ✅ volumeClaimTemplates: Erstellt PVC pro Pod
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [&quot;ReadWriteOnce&quot;]
+        resources:
+          requests:
+            storage: 10Gi
+</code></pre>
+
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Was macht er?</th>
+<th>Warum wichtig?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>serviceName</code></strong></td>
+<td>Referenz zu Headless Service</td>
+<td>DNS: <code>postgres-0.postgres</code></td>
+</tr>
+<tr>
+<td><strong><code>volumeClaimTemplates</code></strong></td>
+<td>PVC-Template pro Replica</td>
+<td>Jeder Pod bekommt eigenen Storage</td>
+</tr>
+</tbody>
+</table>
+<h3 id="103-update-strategien">10.3 Update-Strategien</h3>
+<table>
+<thead>
+<tr>
+<th>Strategie</th>
+<th>Was passiert?</th>
+<th>Wann nutzen?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>RollingUpdate</code></strong> (default)</td>
+<td>Sequenziell von höchster zu niedrigster Ordinal (2→1→0)</td>
+<td>Standard</td>
+</tr>
+<tr>
+<td><strong><code>OnDelete</code></strong></td>
+<td>Manueller Update (Pod muss gelöscht werden)</td>
+<td>Volle Kontrolle gewünscht</td>
+</tr>
+</tbody>
+</table>
+<pre class="codehilite"><code class="language-yaml">spec:
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      partition: 2  # ✅ Nur Pods &gt;= 2 updaten (Canary Deployment)
+</code></pre>
+
+<h3 id="104-partition-canary-deployments">10.4 Partition (Canary Deployments)</h3>
+<pre class="codehilite"><code class="language-yaml">spec:
+  replicas: 5
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      partition: 3  # Nur postgres-3 und postgres-4 werden geupdatet
+</code></pre>
+
+<p><strong>Use Case:</strong> Teste neue Version auf 2 Pods, Rest bleibt auf alter Version</p>
+<hr />
+<h2 id="11-job-cronjob-parameter">11. Job &amp; CronJob Parameter</h2>
+<h3 id="111-job-einmalige-tasks">11.1 Job (einmalige Tasks)</h3>
+<pre class="codehilite"><code class="language-yaml">apiVersion: batch/v1
+kind: Job
+metadata:
+  name: database-migration
+spec:
+  template:
+    spec:
+      containers:
+        - name: migrate
+          image: migrate-tool:v1
+          command: ['./migrate.sh']
+      restartPolicy: OnFailure  # ✅ Job-spezifisch!
+
+  # Job-Parameter
+  backoffLimit: 4               # Max. 4 Versuche bei Fehler
+  activeDeadlineSeconds: 600    # Max. 10 Minuten Laufzeit
+  ttlSecondsAfterFinished: 3600 # Job nach 1h löschen
+</code></pre>
+
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Was macht er?</th>
+<th>Typischer Wert</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>backoffLimit</code></strong></td>
+<td>Restart-Versuche bei Fehler</td>
+<td>3-6</td>
+</tr>
+<tr>
+<td><strong><code>activeDeadlineSeconds</code></strong></td>
+<td>Max. Laufzeit (timeout)</td>
+<td>600-3600s</td>
+</tr>
+<tr>
+<td><strong><code>ttlSecondsAfterFinished</code></strong></td>
+<td>Auto-Cleanup nach Erfolg</td>
+<td>3600-86400s</td>
+</tr>
+</tbody>
+</table>
+<h3 id="112-cronjob-geplante-tasks">11.2 CronJob (geplante Tasks)</h3>
+<pre class="codehilite"><code class="language-yaml">apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: backup-cronjob
+spec:
+  schedule: &quot;0 2 * * *&quot;         # ✅ Jeden Tag um 2 Uhr nachts
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: backup
+              image: backup-tool:v1
+              command: ['./backup.sh']
+          restartPolicy: OnFailure
+
+  # CronJob-Parameter
+  successfulJobsHistoryLimit: 3  # Behalte 3 erfolgreiche Jobs
+  failedJobsHistoryLimit: 1      # Behalte 1 fehlgeschlagenen Job
+  concurrencyPolicy: Forbid      # Kein paralleles Laufen
+</code></pre>
+
+<h3 id="113-cron-schedule-format">11.3 Cron Schedule Format</h3>
+<pre class="codehilite"><code> ┌───────────── Minute (0-59)
+ │ ┌────────── Stunde (0-23)
+ │ │ ┌─────── Tag des Monats (1-31)
+ │ │ │ ┌──── Monat (1-12)
+ │ │ │ │ ┌─ Wochentag (0-6, Sonntag=0)
+ │ │ │ │ │
+ * * * * *
+</code></pre>
+
+<table>
+<thead>
+<tr>
+<th>Schedule</th>
+<th>Bedeutung</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>*/5 * * * *</code></td>
+<td>Alle 5 Minuten</td>
+</tr>
+<tr>
+<td><code>0 * * * *</code></td>
+<td>Jede Stunde (zur vollen Stunde)</td>
+</tr>
+<tr>
+<td><code>0 2 * * *</code></td>
+<td>Täglich um 2 Uhr nachts</td>
+</tr>
+<tr>
+<td><code>0 0 * * 0</code></td>
+<td>Jeden Sonntag um Mitternacht</td>
+</tr>
+<tr>
+<td><code>0 0 1 * *</code></td>
+<td>Ersten Tag des Monats</td>
+</tr>
+</tbody>
+</table>
+<h3 id="114-concurrency-policy">11.4 Concurrency Policy</h3>
+<table>
+<thead>
+<tr>
+<th>Policy</th>
+<th>Was passiert bei Überlappung?</th>
+<th>Wann nutzen?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>Allow</code></strong></td>
+<td>Jobs laufen parallel</td>
+<td>Unabhängige Tasks</td>
+</tr>
+<tr>
+<td><strong><code>Forbid</code></strong></td>
+<td>Neuer Job wird übersprungen</td>
+<td>Nur 1 Job gleichzeitig erlaubt</td>
+</tr>
+<tr>
+<td><strong><code>Replace</code></strong></td>
+<td>Alter Job wird gekillt</td>
+<td>Immer neueste Version laufen lassen</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="12-ingress-parameter">12. Ingress Parameter</h2>
+<p><strong>Ingress = Eintrittspunkt von außen (HTTP/HTTPS)</strong></p>
+<h3 id="121-basis-ingress">12.1 Basis-Ingress</h3>
+<pre class="codehilite"><code class="language-yaml">apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: app-ingress
+  annotations:
+    kubernetes.io/ingress.class: nginx  # Ingress Controller
+spec:
+  rules:
+    - host: myapp.example.com           # Domain
+      http:
+        paths:
+          - path: /                     # URL-Pfad
+            pathType: Prefix            # Matching-Strategie
+            backend:
+              service:
+                name: frontend-service  # Ziel-Service
+                port:
+                  number: 80
+</code></pre>
+
+<h3 id="122-path-types">12.2 Path Types</h3>
+<table>
+<thead>
+<tr>
+<th>PathType</th>
+<th>Matching-Verhalten</th>
+<th>Beispiel</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>Prefix</code></strong></td>
+<td>Alle Pfade, die mit <code>/api</code> starten</td>
+<td><code>/api/users</code>, <code>/api/products</code></td>
+</tr>
+<tr>
+<td><strong><code>Exact</code></strong></td>
+<td>Nur exakter Match</td>
+<td>Nur <code>/api</code> (nicht <code>/api/users</code>)</td>
+</tr>
+<tr>
+<td><strong><code>ImplementationSpecific</code></strong></td>
+<td>Abhängig vom Ingress Controller</td>
+<td>-</td>
+</tr>
+</tbody>
+</table>
+<h3 id="123-multiple-hosts-paths">12.3 Multiple Hosts &amp; Paths</h3>
+<pre class="codehilite"><code class="language-yaml">spec:
+  rules:
+    # Host 1
+    - host: api.example.com
+      http:
+        paths:
+          - path: /v1
+            pathType: Prefix
+            backend:
+              service:
+                name: api-v1
+                port:
+                  number: 8080
+
+          - path: /v2
+            pathType: Prefix
+            backend:
+              service:
+                name: api-v2
+                port:
+                  number: 8080
+
+    # Host 2
+    - host: admin.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: admin-panel
+                port:
+                  number: 80
+</code></pre>
+
+<h3 id="124-tlshttps">12.4 TLS/HTTPS</h3>
+<pre class="codehilite"><code class="language-yaml">spec:
+  tls:
+    - hosts:
+        - myapp.example.com
+      secretName: tls-secret  # Secret mit cert + key
+  rules:
+    - host: myapp.example.com
+      # ...
+</code></pre>
+
+<p><strong>TLS Secret erstellen:</strong></p>
+<pre class="codehilite"><code class="language-bash">kubectl create secret tls tls-secret \
+  --cert=path/to/cert.pem \
+  --key=path/to/key.pem
+</code></pre>
+
+<h3 id="125-nutzliche-annotations-nginx-ingress">12.5 Nützliche Annotations (NGINX Ingress)</h3>
+<pre class="codehilite"><code class="language-yaml">metadata:
+  annotations:
+    # Timeouts
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: &quot;60&quot;
+    nginx.ingress.kubernetes.io/proxy-send-timeout: &quot;60&quot;
+    nginx.ingress.kubernetes.io/proxy-read-timeout: &quot;60&quot;
+
+    # Body Size (für File-Uploads)
+    nginx.ingress.kubernetes.io/proxy-body-size: &quot;50m&quot;
+
+    # HTTPS Redirect
+    nginx.ingress.kubernetes.io/force-ssl-redirect: &quot;true&quot;
+
+    # CORS
+    nginx.ingress.kubernetes.io/enable-cors: &quot;true&quot;
+    nginx.ingress.kubernetes.io/cors-allow-origin: &quot;*&quot;
+</code></pre>
+
+<hr />
+<h2 id="13-pod-disruption-budget">13. Pod Disruption Budget</h2>
+<p><strong>Verhindert zu viele gleichzeitige Pod-Ausfälle (bei Updates, Node-Wartung)</strong></p>
+<pre class="codehilite"><code class="language-yaml">apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: app-pdb
+spec:
+  minAvailable: 2          # Min. 2 Pods müssen laufen
+  # ODER:
+  # maxUnavailable: 1      # Max. 1 Pod darf down sein
+  selector:
+    matchLabels:
+      app: frontend
+</code></pre>
+
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Was macht er?</th>
+<th>Wann nutzen?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>minAvailable</code></strong></td>
+<td>Mindestanzahl verfügbarer Pods</td>
+<td>Absolute Zahl wichtig</td>
+</tr>
+<tr>
+<td><strong><code>maxUnavailable</code></strong></td>
+<td>Max. gleichzeitig nicht-verfügbare Pods</td>
+<td>Prozentual sinnvoll</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Use Case:</strong> Bei <code>replicas: 3</code> und <code>minAvailable: 2</code> kann Cluster-Admin nur 1 Node gleichzeitig warten.</p>
+<hr />
+<h2 id="14-affinity-anti-affinity">14. Affinity &amp; Anti-Affinity</h2>
+<p><strong>Steuert, auf welchen Nodes Pods landen</strong></p>
+<h3 id="141-node-affinity-pod-zu-node">14.1 Node Affinity (Pod zu Node)</h3>
+<pre class="codehilite"><code class="language-yaml">spec:
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:  # MUSS
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: disktype
+                operator: In
+                values:
+                  - ssd
+</code></pre>
+
+<p><strong>Use Case:</strong> GPU-Workloads müssen auf GPU-Nodes</p>
+<h3 id="142-pod-anti-affinity-pods-verteilen">14.2 Pod Anti-Affinity (Pods verteilen)</h3>
+<pre class="codehilite"><code class="language-yaml">spec:
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:  # SOLLTE
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app: frontend
+            topologyKey: kubernetes.io/hostname
+</code></pre>
+
+<p><strong>Use Case:</strong> Verteile Replicas auf verschiedene Nodes (High Availability)</p>
+<hr />
+<h2 id="15-namespace-labels">15. Namespace &amp; Labels</h2>
+<h3 id="151-namespaces">15.1 Namespaces</h3>
+<p><strong>Logische Trennung von Ressourcen</strong></p>
+<pre class="codehilite"><code class="language-yaml">apiVersion: v1
+kind: Namespace
+metadata:
+  name: development
+</code></pre>
+
+<p><strong>Use Cases:</strong><br />
+- <strong>Environments:</strong> <code>development</code>, <code>staging</code>, <code>production</code><br />
+- <strong>Teams:</strong> <code>team-frontend</code>, <code>team-backend</code><br />
+- <strong>Mandanten:</strong> <code>customer-a</code>, <code>customer-b</code></p>
+<h3 id="152-labels">15.2 Labels</h3>
+<p><strong>Key-Value-Metadaten für Ressourcen</strong></p>
+<pre class="codehilite"><code class="language-yaml">metadata:
+  labels:
+    app: frontend           # Applikations-Name
+    version: v1.2.3         # Version
+    tier: frontend          # Layer (frontend/backend/database)
+    environment: production # Environment
+</code></pre>
+
+<p><strong>Best Practices:</strong><br />
+- <code>app</code>: Applikations-Name<br />
+- <code>version</code>: Version<br />
+- <code>tier</code>: Frontend/Backend/Database<br />
+- <code>environment</code>: prod/staging/dev</p>
+<p><strong>Nutzen von Labels:</strong></p>
+<pre class="codehilite"><code class="language-bash"># Alle Frontend-Pods
+kubectl get pods -l app=frontend
+
+# Nur Production
+kubectl get pods -l environment=production
+
+# Kombiniert
+kubectl get pods -l app=frontend,environment=production
+</code></pre>
+
+<hr />
+<h2 id="cheat-sheet-die-10-wichtigsten-regeln-fur-anfanger">🎯 Cheat Sheet: Die 10 wichtigsten Regeln für Anfänger</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Regel</th>
+<th>Warum?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1️⃣</td>
+<td><strong>Immer <code>resources</code> setzen</strong> (requests + limits)</td>
+<td>Cluster-Stabilität</td>
+</tr>
+<tr>
+<td>2️⃣</td>
+<td><strong>Immer Health Probes</strong> (liveness + readiness)</td>
+<td>Auto-Healing</td>
+</tr>
+<tr>
+<td>3️⃣</td>
+<td><strong><code>runAsNonRoot: true</code></strong> in Security Context</td>
+<td>Sicherheit</td>
+</tr>
+<tr>
+<td>4️⃣</td>
+<td><strong>Versionierte Image-Tags</strong> (nicht <code>:latest</code>)</td>
+<td>Reproduzierbare Deployments</td>
+</tr>
+<tr>
+<td>5️⃣</td>
+<td><strong>Secrets für sensible Daten</strong>, ConfigMaps für Rest</td>
+<td>Trennung</td>
+</tr>
+<tr>
+<td>6️⃣</td>
+<td><strong><code>imagePullPolicy: IfNotPresent</code></strong> in Produktion</td>
+<td>Performance</td>
+</tr>
+<tr>
+<td>7️⃣</td>
+<td><strong>PVC mit <code>Prune=false</code> Annotation</strong></td>
+<td>Datenschutz</td>
+</tr>
+<tr>
+<td>8️⃣</td>
+<td><strong>Labels konsequent nutzen</strong></td>
+<td>Organisation</td>
+</tr>
+<tr>
+<td>9️⃣</td>
+<td><strong>RollingUpdate-Strategy</strong></td>
+<td>Zero-Downtime</td>
+</tr>
+<tr>
+<td>🔟</td>
+<td><strong>Init Containers für Dependencies</strong></td>
+<td>Sauberer Start</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="weiterfuhrende-ressourcen">📚 Weiterführende Ressourcen</h2>
+<ul>
+<li><strong>Offizielle Kubernetes Docs:</strong> https://kubernetes.io/docs/</li>
+<li><strong>kubectl Cheat Sheet:</strong> https://kubernetes.io/docs/reference/kubectl/cheatsheet/</li>
+<li><strong>Best Practices:</strong> https://kubernetes.io/docs/concepts/configuration/overview/</li>
+</ul>
+<hr />
+<p><em>Dieses Dokument wurde erstellt als Nachschlagewerk für dein Manifest-Projekt.</em><br />
+<em>Stand: 2026-02-03</em></p>
+</body>
+</html>
